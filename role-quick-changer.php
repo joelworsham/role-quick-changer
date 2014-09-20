@@ -52,43 +52,37 @@ if ( ! class_exists( 'RQC' ) ) {
 		 */
 		function __construct() {
 
-			// Add the role dropdown to the menu
-			add_action( 'admin_bar_menu', array( $this, 'add_admin_bar_node' ), 999 );
+			// Set the plugin in motion
+			add_action( 'init', array( $this, 'init' ) );
+		}
+
+		function init() {
+
+			// Get our current role
+			$this->get_current_role();
+
+			// Only allow this plugin to run for admins
+			if ( $this->current_role != 'administrator' ) {
+				return;
+			}
+
+			// If a new role is set, deal with it
+			$this->get_new_role();
+
+			// Modify the user object to have the new role caps
+			$this->modify_role();
 
 			// Add all of our plugin files
-			add_action( 'init', array( $this, 'register_files' ) );
+			$this->register_files();
 			add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_files' ) );
 			add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_files' ) );
 
-			// Get our current role
-			add_action( 'init', array( $this, 'get_current_role' ), 1 );
-
-			// If a new role is set, deal with it
-			add_action( 'init', array( $this, 'get_new_role' ), 2 );
-
-			// Modify the user object to have the new role caps
-			add_action( 'init', array( $this, 'modify_role' ), 3 );
+			// Add the role dropdown to the menu
+			add_action( 'admin_bar_menu', array( $this, 'add_admin_bar_node' ), 999 );
 
 			// Instead of just dieing when changing to a lesser role, die a little
 			// more gracefully
 			add_action( 'admin_page_access_denied', array( $this, 'admin_page_access_denied' ) );
-		}
-
-		/**
-		 * Adds the RQC node to the admin bar.
-		 *
-		 * @since Role Quick Changer 0.1.0
-		 *
-		 * @param object $wp_admin_bar The admin bar object.
-		 */
-		function add_admin_bar_node( $wp_admin_bar ) {
-
-			$args = array(
-				'id'    => 'rqc',
-				'title' => 'Role Quick Change',
-				'href'  => '#'
-			);
-			$wp_admin_bar->add_node( $args );
 		}
 
 		/**
@@ -226,6 +220,28 @@ if ( ! class_exists( 'RQC' ) ) {
 		}
 
 		/**
+		 * Adds the RQC node to the admin bar.
+		 *
+		 * @since Role Quick Changer 0.1.0
+		 *
+		 * @param object $wp_admin_bar The admin bar object.
+		 */
+		function add_admin_bar_node( $wp_admin_bar ) {
+
+			// Do not allow anyone aside from the admin to use this
+			if ( $this->current_role != 'administrator' ) {
+				return;
+			}
+
+			$args = array(
+				'id'    => 'rqc',
+				'title' => 'Role Quick Change',
+				'href'  => '#'
+			);
+			$wp_admin_bar->add_node( $args );
+		}
+
+		/**
 		 * Modify the death of the page when denied access.
 		 *
 		 * Normally, when you don't have sufficient privileges to view a page, you get a plain
@@ -236,13 +252,7 @@ if ( ! class_exists( 'RQC' ) ) {
 		 */
 		public function admin_page_access_denied() {
 
-			global $current_user;
-
-			if ( $this->current_role == 'administrator'
-			     && get_user_meta( $current_user->ID, 'rqc_current_role', true )
-			) {
-				wp_die( "<form method='post'>This role ($this->new_role) would not have sufficient permissions to view this page. Click <input type='submit' value='here' /> to reset role to Administrator (default).<input type='hidden' name='rqc' value='default' /></form>" );
-			}
+			wp_die( "<form method='post'>This role ($this->new_role) would not have sufficient permissions to view this page. Click <input type='submit' value='here' /> to reset role to Administrator (default).<input type='hidden' name='rqc' value='default' /></form>" );
 		}
 	}
 
