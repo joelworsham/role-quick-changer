@@ -53,7 +53,7 @@ if ( ! class_exists( 'RQC' ) ) {
 		function __construct() {
 
 			// Set the plugin in motion
-			add_action( 'init', array( $this, 'init' ) );
+			add_action( 'init', array( $this, 'init' ), 0.0001 );
 		}
 
 		/**
