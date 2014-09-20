@@ -56,6 +56,15 @@ if ( ! class_exists( 'RQC' ) ) {
 			add_action( 'init', array( $this, 'init' ) );
 		}
 
+		/**
+		 * Initializes the plugin.
+		 *
+		 * The reason for all of this being here, instead of being in __construct(), is so that we
+		 * have access to most WP functions, namely access to the current user so that we can stop
+		 * execution of the entire plugin if the current user is NOT the admin.
+		 *
+		 * @since Role Quick Changer 0.1.0
+		 */
 		function init() {
 
 			// Get our current role
