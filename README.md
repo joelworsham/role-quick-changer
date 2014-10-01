@@ -8,5 +8,8 @@ Simply install and activate the plugin and then select the role to test from the
 
 # Changelog
 
+### [0.1.1](https://github.com/joelworsham/role-quick-changer/releases/tag/v0.1.1)
+* Fixed issue of user object being reset on a multi-site early in the load process.
+
 ### [0.1.0](https://github.com/joelworsham/role-quick-changer/releases/tag/v0.1.0)
 * Initial beta release.

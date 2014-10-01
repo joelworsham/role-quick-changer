@@ -1,11 +1,13 @@
 <?php
 
+// FIXME If change to subscriber on front end, admin bar disappears
+
 /*
  * Plugin Name: Role Quick Changer
  * Description: Allows the admin to easily and seamlessly switch user role privileges without ever logging out
  * Author: Joel Worsham
  * Author URI: http://joelworsham.com
- * Version: 0.1.0
+ * Version: 0.1.1
  * License: GPU
  */
 
@@ -80,6 +82,10 @@ if ( ! class_exists( 'RQC' ) ) {
 
 			// Modify the user object to have the new role caps
 			$this->modify_role();
+
+			// This function is called when initializing the admin bar on a multi-site. It will reset the user object to
+			// its default. So we need to run modify role again
+			add_action( 'switch_blog', array( $this, 'modify_role' ), 99999 );
 
 			// Add all of our plugin files
 			$this->register_files();
