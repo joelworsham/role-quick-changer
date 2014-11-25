@@ -20,6 +20,12 @@ Install through the install plugin screen in the dashboard. Or download the file
 
 == Changelog ==
 
+= 0.1.2 =
+* Fixed fatal error on pre PHP 5.4 servers due to array shorthand syntax.
+
+= 0.1.1 =
+* Fixed issue of user object being reset on a multi-site early in the load process.
+
 = 0.1.0 =
 * Initial beta release.
 

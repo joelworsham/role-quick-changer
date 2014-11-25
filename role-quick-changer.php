@@ -7,7 +7,7 @@
  * Description: Allows the admin to easily and seamlessly switch user role privileges without ever logging out
  * Author: Joel Worsham
  * Author URI: http://joelworsham.com
- * Version: 0.1.1
+ * Version: 0.1.2
  * License: GPU
  */
 
@@ -31,7 +31,7 @@ if ( ! class_exists( 'RQC' ) ) {
 		 *
 		 * @since Role Quick Changer 0.1.0
 		 */
-		public $version = '0.1.0';
+		public $version = '0.1.2';
 
 		/**
 		 * The current user's default role.
@@ -171,7 +171,7 @@ if ( ! class_exists( 'RQC' ) ) {
 			// that we make WP think the current user is NOT super admin, because that overrides all
 			// capabilities
 			if ( $this->new_role != 'administrator' && is_super_admin( $current_user->ID ) ) {
-				$super_admins = [ ];
+				$super_admins = array();
 			}
 
 			// Otherwise modify the current user object
@@ -199,7 +199,7 @@ if ( ! class_exists( 'RQC' ) ) {
 			);
 
 			// Build our roles array
-			$data = [ ];
+			$data = array();
 			foreach ( $wp_roles->roles as $role_id => $role ) {
 
 				// For the administrator role, make it "default", because that will disable
