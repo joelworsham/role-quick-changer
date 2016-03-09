@@ -5,7 +5,7 @@
  * Description: Allows the admin to easily and seamlessly switch user role privileges without ever logging out
  * Author: Joel Worsham
  * Author URI: http://joelworsham.com
- * Version: 0.1.2
+ * Version: 0.2.0
  * License: GPU
  */
 
@@ -29,7 +29,7 @@ if ( ! class_exists( 'RQC' ) ) {
 		 *
 		 * @since 0.1.0
 		 */
-		public $version = '0.1.2';
+		public $version = '0.2.0';
 
 		/**
 		 * The current user's default role.
@@ -48,7 +48,7 @@ if ( ! class_exists( 'RQC' ) ) {
 		/**
 		 * The new role's capabilities.
 		 *
-		 * @since {{VERSION}}
+		 * @since 0.2.0
 		 *
 		 * @var array
 		 */
@@ -75,7 +75,7 @@ if ( ! class_exists( 'RQC' ) ) {
 		/**
 		 * Setup the current role, and (if set) setup the new role and capabilities.
 		 *
-		 * @since {{VERSION}}
+		 * @since 0.2.0
 		 * @access private
 		 */
 		function setup_roles() {
@@ -122,7 +122,7 @@ if ( ! class_exists( 'RQC' ) ) {
 		/**
 		 * Sets the role (capabilities) based on the chosen role.
 		 *
-		 * @since {{VERSION}}
+		 * @since 0.2.0
 		 * @access private
 		 */
 		function modify_role_capabilities( $user_caps ) {
