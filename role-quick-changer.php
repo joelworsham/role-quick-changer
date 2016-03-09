@@ -1,7 +1,5 @@
 <?php
 
-// FIXME If change to subscriber on front end, admin bar disappears
-
 /*
  * Plugin Name: Role Quick Changer
  * Description: Allows the admin to easily and seamlessly switch user role privileges without ever logging out
@@ -22,171 +20,133 @@ if ( ! class_exists( 'RQC' ) ) {
 	 * @package WordPress
 	 * @subpackage Role Quick Changer
 	 *
-	 * @since Role Quick Changer 0.1.0
+	 * @since 0.1.0
 	 */
 	class RQC {
 
 		/**
 		 * The plugin version.
 		 *
-		 * @since Role Quick Changer 0.1.0
+		 * @since 0.1.0
 		 */
 		public $version = '0.1.2';
 
 		/**
 		 * The current user's default role.
 		 *
-		 * @since Role Quick Changer 0.1.0
+		 * @since 0.1.0
 		 */
-		public $current_role;
+		private $current_role;
 
 		/**
 		 * The role to change the current user's to.
 		 *
-		 * @since Role Quick Changer 0.1.0
+		 * @since 0.1.0
 		 */
-		public $new_role;
+		private $new_role;
+
+		/**
+		 * The new role's capabilities.
+		 *
+		 * @since {{VERSION}}
+		 *
+		 * @var array
+		 */
+		private $new_role_caps;
 
 		/**
 		 * The main construct function that launches all the magical fun.
 		 *
-		 * @since Role Quick Changer 0.1.0
+		 * @since 0.1.0
 		 */
 		function __construct() {
 
-			// Set the plugin in motion
-			add_action( 'init', array( $this, 'init' ), 0.0001 );
+			add_action( 'init', array( $this, 'setup_roles' ), 1 );
+			add_action( 'init', array( $this, 'register_assets' ) );
+			add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+			add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+			add_action( 'admin_bar_menu', array( $this, 'add_admin_bar_node' ), 1000 );
+			add_filter('show_admin_bar', array( $this, 'force_admin_bar' ), 1000 );
+			add_action( 'admin_page_access_denied', array( $this, 'admin_page_access_denied' ) );
+
+			add_filter( 'user_has_cap', array( $this, 'modify_role_capabilities' ), 1000, 4 );
 		}
 
 		/**
-		 * Initializes the plugin.
+		 * Setup the current role, and (if set) setup the new role and capabilities.
 		 *
-		 * The reason for all of this being here, instead of being in __construct(), is so that we
-		 * have access to most WP functions, namely access to the current user so that we can stop
-		 * execution of the entire plugin if the current user is NOT the admin.
-		 *
-		 * @since Role Quick Changer 0.1.0
+		 * @since {{VERSION}}
+		 * @access private
 		 */
-		function init() {
+		function setup_roles() {
 
-			// Get our current role
-			$this->get_current_role();
+			global $current_user;
+
+			if ( ! $current_user ) {
+				$current_user = get_current_user();
+			}
+
+			if ( ! $this->current_role ) {
+				$this->current_role = array_shift( $current_user->roles );
+			}
+
+			if ( ! $this->new_role ) {
+
+				// If this POST variable exists, the current user just changed the drop-down
+				if ( isset( $_POST['rqc'] ) ) {
+
+					// If the POST value is "default", then just turn it off
+					if ( $_POST['rqc'] == 'default' ) {
+
+						$this->new_role = false;
+						delete_user_meta( $current_user->ID, 'rqc_current_role' );
+
+						return;
+					}
+
+					// Set the new role to the POST value and update the meta
+					$this->new_role = $_POST['rqc'];
+					update_user_meta( $current_user->ID, 'rqc_current_role', $this->new_role );
+				}
+
+				// Otherwise, grab the role from the current user meta
+				$role           = get_user_meta( $current_user->ID, 'rqc_current_role', true );
+				$this->new_role = $role;
+
+				if ( $role = get_role( $this->new_role ) ) {
+					$this->new_role_caps = $role->capabilities;
+				}
+			}
+		}
+
+		/**
+		 * Sets the role (capabilities) based on the chosen role.
+		 *
+		 * @since {{VERSION}}
+		 * @access private
+		 */
+		function modify_role_capabilities( $user_caps ) {
 
 			// Only allow this plugin to run for admins
 			if ( $this->current_role != 'administrator' ) {
-				return;
+				return $user_caps;
 			}
 
-			// If a new role is set, deal with it
-			$this->get_new_role();
-
-			// Modify the user object to have the new role caps
-			$this->modify_role();
-
-			// This function is called when initializing the admin bar on a multi-site. It will reset the user object to
-			// its default. So we need to run modify role again
-			add_action( 'switch_blog', array( $this, 'modify_role' ), 99999 );
-
-			// Add all of our plugin files
-			$this->register_files();
-			add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_files' ) );
-			add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_files' ) );
-
-			// Add the role dropdown to the menu
-			add_action( 'admin_bar_menu', array( $this, 'add_admin_bar_node' ), 999 );
-
-			// Instead of just dieing when changing to a lesser role, die a little
-			// more gracefully
-			add_action( 'admin_page_access_denied', array( $this, 'admin_page_access_denied' ) );
-		}
-
-		/**
-		 * Gets the current user's default role.
-		 *
-		 * @since Role Quick Changer 0.1.0
-		 */
-		public function get_current_role() {
-
-			global $current_user;
-
-			$user_roles = $current_user->roles;
-
-			$user_role = array_shift( $user_roles );
-
-			$this->current_role = $user_role;
-		}
-
-		/**
-		 * Get's the new role.
-		 *
-		 * Either grabs the new role from POST (if it was just set by the dropdown), or grabs
-		 * the saved user meta containing the role to use, OR (if all of the above fails) sets
-		 * the new role to false, indicating not to change the role at all.
-		 *
-		 * @since Role Quick Changer 0.1.0
-		 */
-		public function get_new_role() {
-
-			global $current_user;
-
-			// If this POST variable exists, the current user just changed the drop-down
-			if ( isset( $_POST['rqc'] ) ) {
-
-				// If the POST value is "default", then just turn it off
-				if ( $_POST['rqc'] == 'default' ) {
-
-					$this->new_role = false;
-					delete_user_meta( $current_user->ID, 'rqc_current_role' );
-
-					return;
-				}
-
-				// Set the new role to the POST value and update the meta
-				$this->new_role = $_POST['rqc'];
-				update_user_meta( $current_user->ID, 'rqc_current_role', $this->new_role );
+			// Return the new capablities
+			if ( $this->new_role_caps ) {
+				return $this->new_role_caps;
 			}
 
-			// Otherwise, grab the role from the current user meta
-			$role = get_user_meta( $current_user->ID, 'rqc_current_role', true );
-
-			// ...and set the new role to that, OR set it to false
-			$this->new_role = $role ? $role : false;
-		}
-
-		/**
-		 * Modifies the $current_user object to contain the new role's capabilities.
-		 *
-		 * @since Role Quick Changer 0.1.0
-		 */
-		public function modify_role() {
-
-			global $current_user, $wp_roles, $super_admins;
-
-			// If new role is set to false then don't change the role at all
-			if ( ! $this->new_role ) {
-				return;
-			}
-
-			// If we're changing the role to something that's not an administrator, we need to make sure
-			// that we make WP think the current user is NOT super admin, because that overrides all
-			// capabilities
-			if ( $this->new_role != 'administrator' && is_super_admin( $current_user->ID ) ) {
-				$super_admins = array();
-			}
-
-			// Otherwise modify the current user object
-			$current_user->allcaps  = $wp_roles->roles[ $this->new_role ]['capabilities'];
-			$current_user->roles[0] = strtolower( $this->new_role );
-			unset( $current_user->caps[ $this->current_role ] );
-			$current_user->caps[ $this->new_role ] = true;
+			return $user_caps;
 		}
 
 		/**
 		 * Registers the plugin's files and localizes some data.
 		 *
-		 * @since Role Quick Changer 0.1.0
+		 * @since 0.1.0
+		 * @access private
 		 */
-		public function register_files() {
+		function register_assets() {
 
 			global $wp_roles;
 
@@ -194,7 +154,7 @@ if ( ! class_exists( 'RQC' ) ) {
 				'rqc-main',
 				plugins_url( 'assets/js/rqc.main.min.js', __FILE__ ),
 				array( 'jquery' ),
-				$this->version,
+				defined( 'WP_DEBUG' ) && WP_DEBUG ? time() : $this->version,
 				true
 			);
 
@@ -226,9 +186,10 @@ if ( ! class_exists( 'RQC' ) ) {
 		/**
 		 * Enqueues the plugin's files
 		 *
-		 * @since Role Quick Changer 0.1.0
+		 * @since 0.1.0
+		 * @access private
 		 */
-		public function enqueue_files() {
+		function enqueue_assets() {
 
 			// The main script
 			wp_enqueue_script( 'rqc-main' );
@@ -237,7 +198,8 @@ if ( ! class_exists( 'RQC' ) ) {
 		/**
 		 * Adds the RQC node to the admin bar.
 		 *
-		 * @since Role Quick Changer 0.1.0
+		 * @since 0.1.0
+		 * @access private
 		 *
 		 * @param object $wp_admin_bar The admin bar object.
 		 */
@@ -257,17 +219,46 @@ if ( ! class_exists( 'RQC' ) ) {
 		}
 
 		/**
+		 * Force the adminbar to show if a new roles is set.
+		 *
+		 * @since 0.1.0
+		 * @access private
+		 *
+		 * @param $bool
+		 *
+		 * @return bool
+		 */
+		function force_admin_bar( $bool ) {
+
+			if ( $this->new_role ) {
+				return true;
+			}
+
+			return $bool;
+		}
+
+		/**
 		 * Modify the death of the page when denied access.
 		 *
 		 * Normally, when you don't have sufficient privileges to view a page, you get a plain
 		 * wp death screen. Well, if you change your role and then get that death, that's annoying.
 		 * So this modifies it.
 		 *
-		 * @since Role Quick Changer 0.1.0
+		 * @since 0.1.0
+		 * @access private
 		 */
-		public function admin_page_access_denied() {
+		function admin_page_access_denied() {
 
-			wp_die( "<form method='post'>This role ($this->new_role) would not have sufficient permissions to view this page. Click <input type='submit' value='here' /> to reset role to Administrator (default).<input type='hidden' name='rqc' value='default' /></form>" );
+			ob_start(); ?>
+			<form method="post">
+				This role (<?php echo $this->new_role; ?>) would not have sufficient permissions to view this page.
+				Click <input type="submit" value="here"/> to reset role to Administrator (default).
+
+				<input type="hidden" name="rqc" value="default" />
+			</form>
+			<?php $html = ob_get_clean();
+
+			wp_die( $html );
 		}
 	}
 
@@ -282,7 +273,7 @@ if ( ! class_exists( 'RQC' ) ) {
 /**
  * Notifies the user that something is conflicting.
  *
- * @since Role Quick Changer 0.1
+ * @since 0.1
  */
 function rqc_notice() {
 
@@ -293,5 +284,5 @@ function rqc_notice() {
 			the theme to see if the problem persists.
 		</p>
 	</div>
-<?php
+	<?php
 }
