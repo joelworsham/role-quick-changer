@@ -3,8 +3,8 @@
 Contributors: joelworsham
 Tags: role, quick, changer, change, quickly, switch, user, switcher
 Requires at least: 3.1.0
-Tested up to: 4.0.0
-Stable tag: 0.1.1
+Tested up to: 4.4.2
+Stable tag: 0.2.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,9 @@ Simply install and activate the plugin and then select the role to test from the
 Install through the install plugin screen in the dashboard. Or download the files and upload to your plugins directory.
 
 == Changelog ==
+
+= 0.2.0 =
+* Improve capability checking and plugin structure.
 
 = 0.1.2 =
 * Fixed fatal error on pre PHP 5.4 servers due to array shorthand syntax.
